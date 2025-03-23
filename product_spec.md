@@ -1,4 +1,4 @@
-# Word Puzzle Game - Product Specification
+# Quadrality - Product Specification
 
 ## Overview
 A web-based game where users are presented with 4 images related to a single word. The goal is to guess the word that connects all images.

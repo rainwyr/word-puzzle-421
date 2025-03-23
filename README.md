@@ -1,4 +1,4 @@
-# 4 Images 1 Word - Puzzle Game
+# Quadrality
 
 A Streamlit web application that presents users with 4 images related to a single word. The goal is to guess the word that connects all the images.
 

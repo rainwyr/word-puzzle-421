@@ -6,7 +6,7 @@ from typing import Dict, Any
 
 # Set page configuration
 st.set_page_config(
-    page_title="Word Puzzle Game",
+    page_title="Quadrality",
     page_icon="🧩",
     layout="centered",
     initial_sidebar_state="collapsed"
@@ -484,7 +484,7 @@ def main():
     initialize_session_state()
     
     # Display the title
-    st.markdown('<h1 class="title">Word Puzzle Game 🧩</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="title">Quadrality 🧩</h1>', unsafe_allow_html=True)
     
     try:
         # Get the current puzzle
