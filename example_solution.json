@@ -1,0 +1,15 @@
+{
+  "target_word": "base",
+  "descriptions": {
+    "1": "A fortified military compound with aircraft hangars and security fences",
+    "2": "A chemical substance that turns litmus paper blue and neutralizes acids",
+    "3": "A white square pad on a diamond-shaped field where runners can safely stop",
+    "4": "The bottom supporting structure of a tall building or monument"
+  },
+  "image_urls": {
+    "1": "2d5a7f8e-9b3c-4d12-a8f6-1e2c3b4d5e6f_1.png",
+    "2": "2d5a7f8e-9b3c-4d12-a8f6-1e2c3b4d5e6f_2.png",
+    "3": "2d5a7f8e-9b3c-4d12-a8f6-1e2c3b4d5e6f_3.png",
+    "4": "2d5a7f8e-9b3c-4d12-a8f6-1e2c3b4d5e6f_4.png"
+  }
+} 
