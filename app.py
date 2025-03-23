@@ -231,9 +231,8 @@ def submit_guess():
         game_state['feedback_message'] = f"'{user_guess}' is not correct. Try again!"
         game_state['feedback_type'] = "error"
     
-    # We don't try to clear the input field directly
-    # Instead, we'll force a rerun which will reset the UI state
-    st.rerun()
+    # Streamlit will automatically rerun when session state is modified
+    # Don't call st.rerun() from a callback
 
 # Handle hint button
 def show_hints():
@@ -352,8 +351,8 @@ def submit_rating():
     st.session_state.game_state['show_rating_ui'] = False
     st.session_state.game_state['current_puzzle'] = game_logic.load_new_puzzle()
     
-    # Force UI refresh
-    st.rerun()
+    # Streamlit will automatically rerun when session state is modified
+    # Don't call st.rerun() from a callback
 
 # Display rating UI for a solved puzzle
 def display_rating_ui():
@@ -441,7 +440,14 @@ def display_rating_ui():
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Display current puzzle ratings if available
+# Handle text input when Enter is pressed
+def handle_text_input():
+    # If the user pressed Enter in the text field, submit the guess
+    if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
+        st.session_state.user_guess = st.session_state.user_guess_input
+        submit_guess()
+
+# Display current puzzle ratings if available (not displayed to users, for analysis only)
 def display_current_ratings():
     ratings = st.session_state.game_state.get('current_ratings')
     
@@ -468,13 +474,6 @@ def display_current_ratings():
     </div>
     """, unsafe_allow_html=True)
 
-# Handle text input when Enter is pressed
-def handle_text_input():
-    # If the user pressed Enter in the text field, submit the guess
-    if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
-        st.session_state.user_guess = st.session_state.user_guess_input
-        submit_guess()
-
 # Main app
 def main():
     # Load CSS
@@ -496,9 +495,6 @@ def main():
         
         # Display game statistics
         display_game_stats()
-        
-        # Display current puzzle ratings if available
-        display_current_ratings()
         
         # Display the puzzle images
         display_puzzle_images(current_puzzle)
@@ -531,7 +527,6 @@ def main():
                         if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
                             st.session_state.user_guess = st.session_state.user_guess_input
                             submit_guess()
-                            st.rerun()
                 
                 # Action buttons
                 col1, col2 = st.columns(2)
@@ -539,12 +534,10 @@ def main():
                 with col1:
                     if st.button("Show Hints"):
                         show_hints()
-                        st.rerun()
                 
                 with col2:
                     if st.button("Skip Puzzle"):
                         skip_puzzle()
-                        st.rerun()
                 
                 st.markdown('</div>', unsafe_allow_html=True)
     except Exception as e:
