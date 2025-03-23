@@ -10,6 +10,10 @@ A Streamlit web application that presents users with 4 images related to a singl
 - Score tracking based on time and hint usage
 - Feedback for correct/incorrect answers
 - Skip functionality for difficult puzzles
+- Rating system for puzzles:
+  - Mandatory ratings for both difficulty and fun
+  - Rating submission required after each puzzle (solved or skipped)
+  - Aggregate rating display for each puzzle
 
 ## Setup Instructions
 
@@ -77,6 +81,18 @@ The S3 bucket should contain:
 - `puzzles/`: JSON files with puzzle descriptions and image URLs
 - `solutions_by_id/`: Solutions organized by puzzle ID
 - `solutions_by_word/`: Solutions organized by target word
+- `ratings/`: Aggregated user ratings for each puzzle
+- `ratings_log/`: Detailed individual rating logs organized by time
+
+## How to Play
+
+1. Four images will be displayed, all related to a single word.
+2. Think about what word connects all four images.
+3. Enter your guess in the text input field.
+4. Use "Show Hints" if you need help (this will display descriptions of the images).
+5. Use "Skip Puzzle" if you want to move to a different puzzle.
+6. After solving or skipping a puzzle, you must rate its difficulty (1-5 stars) and how fun it was (1-5 stars).
+7. Your score is based on solving time and whether hints were used.
 
 ## Deployment
 
