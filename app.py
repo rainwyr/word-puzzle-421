@@ -230,9 +230,6 @@ def submit_guess():
         # Incorrect answer
         game_state['feedback_message'] = f"'{user_guess}' is not correct. Try again!"
         game_state['feedback_type'] = "error"
-    
-    # Streamlit will automatically rerun when session state is modified
-    # Don't call st.rerun() from a callback
 
 # Handle hint button
 def show_hints():
@@ -522,22 +519,20 @@ def main():
                 
                 # Submit button in second column
                 with button_col:
-                    if st.button("Submit Guess", type="primary"):
-                        # Get value from the input field and submit
+                    if st.button("Submit Guess", type="primary", on_click=submit_guess):
                         if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
                             st.session_state.user_guess = st.session_state.user_guess_input
-                            submit_guess()
                 
                 # Action buttons
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    if st.button("Show Hints"):
-                        show_hints()
+                    if st.button("Show Hints", on_click=show_hints):
+                        pass
                 
                 with col2:
-                    if st.button("Skip Puzzle"):
-                        skip_puzzle()
+                    if st.button("Skip Puzzle", on_click=skip_puzzle):
+                        pass
                 
                 st.markdown('</div>', unsafe_allow_html=True)
     except Exception as e:
