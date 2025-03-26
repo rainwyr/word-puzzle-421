@@ -235,7 +235,8 @@ def submit_rating(state: Dict[str, Any], difficulty_rating: int, fun_rating: int
         time_to_solve=time_to_solve,
         hints_used=hints_used,
         session_id=state['session_id'],
-        was_skipped=was_skipped
+        was_skipped=was_skipped,
+        player_name=state.get('player_name')
     )
     
     # Update game history with ratings

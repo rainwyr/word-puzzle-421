@@ -348,7 +348,8 @@ def get_puzzle_ratings(puzzle_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: int, fun_rating: int, 
-                        time_to_solve: float, hints_used: bool, session_id: str, was_skipped: bool = False) -> bool:
+                        time_to_solve: float, hints_used: bool, session_id: str, was_skipped: bool = False,
+                        player_name: str = None) -> bool:
     """
     Submit a rating for a puzzle and update aggregate ratings.
     
@@ -361,6 +362,7 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
         hints_used (bool): Whether hints were used
         session_id (str): Anonymous session identifier
         was_skipped (bool): Whether the puzzle was skipped
+        player_name (str): The player's name if provided
         
     Returns:
         bool: True if successful, False otherwise
@@ -375,7 +377,8 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
             time_to_solve=time_to_solve,
             hints_used=hints_used,
             session_id=session_id,
-            was_skipped=was_skipped
+            was_skipped=was_skipped,
+            player_name=player_name
         )
         
         # Then update the aggregate ratings
@@ -497,7 +500,8 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
         return False
 
 def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: int, fun_rating: int, 
-                         time_to_solve: float, hints_used: bool, session_id: str, was_skipped: bool = False) -> bool:
+                         time_to_solve: float, hints_used: bool, session_id: str, was_skipped: bool = False,
+                         player_name: str = None) -> bool:
     """
     Log an individual rating to the ratings log.
     
@@ -510,6 +514,7 @@ def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: i
         hints_used (bool): Whether hints were used
         session_id (str): Anonymous session identifier
         was_skipped (bool): Whether the puzzle was skipped
+        player_name (str): The player's name if provided
         
     Returns:
         bool: True if successful, False otherwise
@@ -538,7 +543,8 @@ def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: i
                 "hints_used": hints_used,
                 "was_skipped": was_skipped,
                 "platform": "unknown",  # Could be determined from user agent
-                "browser": "unknown"    # Could be determined from user agent
+                "browser": "unknown",   # Could be determined from user agent
+                "player_name": player_name
             }
         }
         
@@ -600,7 +606,8 @@ def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: i
                     "hints_used": hints_used,
                     "was_skipped": was_skipped,
                     "platform": "unknown", 
-                    "browser": "unknown"  
+                    "browser": "unknown",  
+                    "player_name": player_name
                 }
             }
             
