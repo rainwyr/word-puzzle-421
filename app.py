@@ -200,6 +200,8 @@ def initialize_session_state():
     if 'game_state' not in st.session_state:
         st.session_state.game_state = game_logic.initialize_game_state()
         st.session_state.game_state['current_puzzle'] = game_logic.load_new_puzzle()
+        st.session_state.game_state['player_name'] = None
+        st.session_state.game_state['is_first_puzzle'] = True
     
     if 'user_guess' not in st.session_state:
         st.session_state.user_guess = ""
@@ -471,6 +473,12 @@ def display_current_ratings():
     </div>
     """, unsafe_allow_html=True)
 
+# Handle name submission
+def submit_name():
+    if 'name_input' in st.session_state and st.session_state.name_input.strip():
+        st.session_state.game_state['player_name'] = st.session_state.name_input.strip()
+        st.session_state.game_state['is_first_puzzle'] = False
+
 # Main app
 def main():
     # Load CSS
@@ -507,32 +515,43 @@ def main():
             with st.container():
                 st.markdown('<div class="input-area">', unsafe_allow_html=True)
                 
-                # Label for the input
-                st.markdown('<p>What\'s the word that connects all these images?</p>', unsafe_allow_html=True)
+                # Show name input for first puzzle
+                if st.session_state.game_state['is_first_puzzle']:
+                    st.markdown('<p>Welcome! Please enter your name to begin:</p>', unsafe_allow_html=True)
+                    with st.form("name_form"):
+                        name_input = st.text_input("Your Name", key="name_input", label_visibility="collapsed")
+                        if st.form_submit_button("Start Playing", type="primary", on_click=submit_name):
+                            if not name_input.strip():
+                                st.error("Please enter your name to continue!")
                 
-                # Create a row with input field and button
-                input_col, button_col = st.columns([4, 1])
-                
-                # User input in first column
-                with input_col:
-                    user_input = st.text_input("", key="user_guess_input", label_visibility="collapsed", on_change=handle_text_input)
-                
-                # Submit button in second column
-                with button_col:
-                    if st.button("Submit Guess", type="primary", on_click=submit_guess):
-                        if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
-                            st.session_state.user_guess = st.session_state.user_guess_input
-                
-                # Action buttons
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    if st.button("Show Hints", on_click=show_hints):
-                        pass
-                
-                with col2:
-                    if st.button("Skip Puzzle", on_click=skip_puzzle):
-                        pass
+                # Show puzzle input if not first puzzle or name is set
+                if not st.session_state.game_state['is_first_puzzle']:
+                    # Label for the input
+                    st.markdown(f'<p>Welcome back, {st.session_state.game_state["player_name"]}! What\'s the word that connects all these images?</p>', unsafe_allow_html=True)
+                    
+                    # Create a row with input field and button
+                    input_col, button_col = st.columns([4, 1])
+                    
+                    # User input in first column
+                    with input_col:
+                        user_input = st.text_input("", key="user_guess_input", label_visibility="collapsed", on_change=handle_text_input)
+                    
+                    # Submit button in second column
+                    with button_col:
+                        if st.button("Submit Guess", type="primary", on_click=submit_guess):
+                            if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
+                                st.session_state.user_guess = st.session_state.user_guess_input
+                    
+                    # Action buttons
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if st.button("Show Hints", on_click=show_hints):
+                            pass
+                    
+                    with col2:
+                        if st.button("Skip Puzzle", on_click=skip_puzzle):
+                            pass
                 
                 st.markdown('</div>', unsafe_allow_html=True)
     except Exception as e:
