@@ -29,6 +29,7 @@ def initialize_game_state() -> Dict[str, Any]:
         'show_rating_ui': False,
         'last_solved_puzzle': None,
         'current_ratings': None,
+        'is_first_puzzle': False  # Changed to False since we don't need name input
     }
 
 def load_new_puzzle() -> Optional[Dict[str, Any]]:
@@ -122,12 +123,18 @@ def skip_puzzle(state: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
     # Update game metrics
     state['puzzles_skipped'] += 1
     
-    # Set flag to show rating UI
-    state['show_rating_ui'] = True
-    
-    # Set feedback message but don't load new puzzle yet
+    # Set feedback message
     state['feedback_message'] = f"Puzzle skipped. The answer was '{correct_answer}'."
     state['feedback_type'] = "error"
+    
+    # Load new puzzle immediately
+    state['current_puzzle'] = load_new_puzzle()
+    state['puzzle_start_time'] = time.time()
+    state['show_hints'] = False
+    
+    # Get ratings for the new puzzle if available
+    if state['current_puzzle']:
+        state['current_ratings'] = s3_utils.get_puzzle_ratings(state['current_puzzle']['id'])
     
     return state, correct_answer
 
@@ -203,14 +210,14 @@ def solve_puzzle(state: Dict[str, Any], user_guess: str) -> Dict[str, Any]:
     
     return state
 
-def submit_rating(state: Dict[str, Any], difficulty_rating: int, fun_rating: int) -> Dict[str, Any]:
+def submit_rating(state: Dict[str, Any], difficulty_rating: str, issue_rating: str) -> Dict[str, Any]:
     """
     Submit ratings for the last solved puzzle.
     
     Args:
         state (Dict[str, Any]): The current game state
-        difficulty_rating (int): Rating from 1-5 for difficulty
-        fun_rating (int): Rating from 1-5 for fun
+        difficulty_rating (str): One of "easy", "medium", "hard"
+        issue_rating (str): One of "bad_images", "bad_puzzle"
         
     Returns:
         Dict[str, Any]: The updated game state
@@ -231,7 +238,7 @@ def submit_rating(state: Dict[str, Any], difficulty_rating: int, fun_rating: int
         puzzle_id=puzzle_id,
         target_word=target_word,
         difficulty_rating=difficulty_rating,
-        fun_rating=fun_rating,
+        issue_rating=issue_rating,
         time_to_solve=time_to_solve,
         hints_used=hints_used,
         session_id=state['session_id'],
@@ -247,7 +254,7 @@ def submit_rating(state: Dict[str, Any], difficulty_rating: int, fun_rating: int
         ):
             entry['ratings'] = {
                 'difficulty': difficulty_rating,
-                'fun': fun_rating
+                'issue': issue_rating
             }
             break
     

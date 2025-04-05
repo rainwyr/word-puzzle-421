@@ -110,6 +110,54 @@ def load_css():
             margin-bottom: 10px;
         }
         
+        /* Rating buttons - Base style */
+        .rating-area .stButton button {
+            width: 100%;
+            margin: 0;
+            padding: 8px 16px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background-color: white !important;
+            color: #31333F !important;
+            border: 1px solid #e6e6e6 !important;
+            border-radius: 4px;
+        }
+        
+        /* Rating buttons - Hover state */
+        .rating-area .stButton button:hover:not([data-baseweb="button"].primary) {
+            background-color: #f0f2f6 !important;
+            border-color: #d0d3d9 !important;
+        }
+        
+        /* Rating buttons - Selected state */
+        .rating-area .stButton button[data-baseweb="button"].primary {
+            background-color: #ff4b4b !important;
+            color: white !important;
+            border-color: #ff4b4b !important;
+        }
+        
+        /* Rating area layout */
+        .rating-area {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .rating-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #31333F;
+        }
+        
+        .rating-label {
+            font-weight: 500;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: #31333F;
+        }
+        
         /* Hint area */
         .hint-area {
             background-color: #fff8e6;
@@ -128,6 +176,7 @@ def load_css():
             margin-bottom: 10px;
         }
         
+        /* Error message */
         .error-message {
             color: #dc3545;
             font-weight: bold;
@@ -135,46 +184,6 @@ def load_css():
             background-color: #f8d7da;
             border-radius: 5px;
             margin-bottom: 10px;
-        }
-        
-        /* Rating area */
-        .rating-area {
-            background-color: #f0f8ff;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .rating-title {
-            font-size: 1.2rem;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .rating-notice {
-            color: #ff6b6b;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        
-        .star-rating {
-            font-size: 2rem;
-            color: #ccc;
-            cursor: pointer;
-            display: inline-block;
-            margin: 0 5px;
-        }
-        
-        .star-rating.selected {
-            color: #ffcc00;
-        }
-        
-        .rating-label {
-            font-weight: bold;
-            margin-top: 10px;
-            margin-bottom: 5px;
         }
         
         /* Current ratings display */
@@ -188,9 +197,45 @@ def load_css():
             margin-bottom: 10px;
         }
         
-        .rating-stars {
-            color: #ffcc00;
-            margin-left: 5px;
+        /* Override Streamlit's button styles */
+        .stButton > button:active {
+            background-color: #ff4b4b !important;
+            color: white !important;
+            border-color: #ff4b4b !important;
+        }
+        
+        .stButton > button:focus {
+            box-shadow: none !important;
+        }
+        
+        /* Force immediate color change on click */
+        .stButton > button:active,
+        .stButton > button[data-baseweb="button"].primary {
+            transform: none !important;
+            transition: none !important;
+        }
+        
+        /* Fix for inconsistent button styling on first click */
+        .rating-area .stButton button:active,
+        .rating-area .stButton button[data-baseweb="button"].primary {
+            background-color: #ff4b4b !important;
+            color: white !important;
+            border-color: #ff4b4b !important;
+        }
+        
+        /* Fix for Streamlit's button styling inconsistency */
+        .rating-area .stButton button[data-baseweb="button"] {
+            background-color: white !important;
+            color: #31333F !important;
+            border: 1px solid #e6e6e6 !important;
+        }
+        
+        /* Override Streamlit's button styling for clicked buttons */
+        .rating-area .stButton button[data-baseweb="button"]:active,
+        .rating-area .stButton button[data-baseweb="button"].primary {
+            background-color: #ff4b4b !important;
+            color: white !important;
+            border-color: #ff4b4b !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -323,36 +368,6 @@ def display_feedback():
         else:
             st.info(game_state['feedback_message'])
 
-# Submit rating
-def submit_rating():
-    if 'difficulty_rating' not in st.session_state or 'fun_rating' not in st.session_state:
-        st.warning("Please select both difficulty and fun ratings.")
-        return
-    
-    # Update game state with ratings
-    st.session_state.game_state = game_logic.submit_rating(
-        st.session_state.game_state,
-        st.session_state.difficulty_rating,
-        st.session_state.fun_rating
-    )
-    
-    # Clear the ratings
-    if 'difficulty_rating' in st.session_state:
-        del st.session_state.difficulty_rating
-    if 'fun_rating' in st.session_state:
-        del st.session_state.fun_rating
-    
-    # Set a thank you message
-    st.session_state.game_state['feedback_message'] = "Thank you for your ratings!"
-    st.session_state.game_state['feedback_type'] = "success"
-    
-    # Reset rating UI and load new puzzle immediately
-    st.session_state.game_state['show_rating_ui'] = False
-    st.session_state.game_state['current_puzzle'] = game_logic.load_new_puzzle()
-    
-    # Streamlit will automatically rerun when session state is modified
-    # Don't call st.rerun() from a callback
-
 # Display rating UI for a solved puzzle
 def display_rating_ui():
     if not st.session_state.game_state['show_rating_ui']:
@@ -360,84 +375,87 @@ def display_rating_ui():
     
     # Check if the puzzle was skipped or solved
     was_skipped = st.session_state.game_state['last_solved_puzzle'].get('was_skipped', False)
+    
+    # If puzzle was skipped, automatically skip rating and load new puzzle
+    if was_skipped:
+        st.session_state.game_state = game_logic.skip_rating(st.session_state.game_state)
+        return
+    
     puzzle_word = st.session_state.game_state['last_solved_puzzle']['target_word']
     
     st.markdown('<div class="rating-area">', unsafe_allow_html=True)
     
-    if was_skipped:
-        st.markdown(f'<h3 class="rating-title">Rate this puzzle for "{puzzle_word}" that you skipped:</h3>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<h3 class="rating-title">Rate this puzzle for "{puzzle_word}" that you solved:</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3 class="rating-title">Rate this puzzle for "{puzzle_word}" that you solved:</h3>', unsafe_allow_html=True)
     
-    st.markdown('<p class="rating-notice">Please rate this puzzle to continue to the next one.</p>', unsafe_allow_html=True)
+    # Initialize default ratings if not already set
+    if 'difficulty_rating' not in st.session_state:
+        st.session_state.difficulty_rating = "easy"
+    if 'issue_rating' not in st.session_state:
+        st.session_state.issue_rating = "no_issues"
     
-    # Difficulty rating
-    st.markdown('<p class="rating-label">Difficulty:</p>', unsafe_allow_html=True)
+    # Difficulty rating using radio buttons
+    st.markdown('<p class="rating-label">How difficult was this puzzle?</p>', unsafe_allow_html=True)
     
-    difficulty_col1, difficulty_col2, difficulty_col3, difficulty_col4, difficulty_col5 = st.columns(5)
+    difficulty_options = ["Easy", "Medium", "Hard"]
+    selected_difficulty = st.radio(
+        "Select difficulty:",
+        options=difficulty_options,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="difficulty_radio",
+        index=0  # Default to "Easy"
+    )
     
-    with difficulty_col1:
-        if st.button("⭐", key="difficulty_1"):
-            st.session_state.difficulty_rating = 1
-    with difficulty_col2:
-        if st.button("⭐", key="difficulty_2"):
-            st.session_state.difficulty_rating = 2
-    with difficulty_col3:
-        if st.button("⭐", key="difficulty_3"):
-            st.session_state.difficulty_rating = 3
-    with difficulty_col4:
-        if st.button("⭐", key="difficulty_4"):
-            st.session_state.difficulty_rating = 4
-    with difficulty_col5:
-        if st.button("⭐", key="difficulty_5"):
-            st.session_state.difficulty_rating = 5
+    # Set the difficulty rating based on the radio selection
+    if selected_difficulty:
+        st.session_state.difficulty_rating = selected_difficulty.lower()
     
-    # Show selected difficulty
-    difficulty_text = ""
-    if 'difficulty_rating' in st.session_state:
-        difficulty_value = st.session_state.difficulty_rating
-        difficulty_text = f"Selected difficulty rating: {difficulty_value}/5"
-    st.markdown(f'<p>{difficulty_text}</p>', unsafe_allow_html=True)
+    # Issue rating using radio buttons
+    st.markdown('<p class="rating-label">Did you encounter any issues with this puzzle?</p>', unsafe_allow_html=True)
     
-    # Fun rating
-    st.markdown('<p class="rating-label">Fun:</p>', unsafe_allow_html=True)
+    issue_options = ["No Issues", "Bad Images", "Bad Puzzle"]
+    selected_issue = st.radio(
+        "Select issue:",
+        options=issue_options,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="issue_radio",
+        index=0  # Default to "No Issues"
+    )
     
-    fun_col1, fun_col2, fun_col3, fun_col4, fun_col5 = st.columns(5)
+    # Set the issue rating based on the radio selection
+    if selected_issue:
+        st.session_state.issue_rating = selected_issue.lower().replace(" ", "_")
     
-    with fun_col1:
-        if st.button("⭐", key="fun_1"):
-            st.session_state.fun_rating = 1
-    with fun_col2:
-        if st.button("⭐", key="fun_2"):
-            st.session_state.fun_rating = 2
-    with fun_col3:
-        if st.button("⭐", key="fun_3"):
-            st.session_state.fun_rating = 3
-    with fun_col4:
-        if st.button("⭐", key="fun_4"):
-            st.session_state.fun_rating = 4
-    with fun_col5:
-        if st.button("⭐", key="fun_5"):
-            st.session_state.fun_rating = 5
-    
-    # Show selected fun rating
-    fun_text = ""
-    if 'fun_rating' in st.session_state:
-        fun_value = st.session_state.fun_rating
-        fun_text = f"Selected fun rating: {fun_value}/5"
-    st.markdown(f'<p>{fun_text}</p>', unsafe_allow_html=True)
-    
-    # Submit button (only enabled when both ratings are selected)
-    is_ready = 'difficulty_rating' in st.session_state and 'fun_rating' in st.session_state
-    
-    if is_ready:
-        if st.button("Submit Rating & Continue", key="submit_rating", type="primary", on_click=submit_rating):
-            pass  # The on_click handler will call submit_rating
-    else:
-        st.button("Submit Rating & Continue", key="submit_rating_disabled", disabled=True)
-        st.markdown('<p class="rating-notice">Please select both difficulty and fun ratings to continue.</p>', unsafe_allow_html=True)
+    # Next Puzzle button
+    if st.button("Next Puzzle", key="next_puzzle", type="primary", on_click=submit_rating):
+        pass  # The on_click handler will call submit_rating
     
     st.markdown('</div>', unsafe_allow_html=True)
+
+def submit_rating():
+    # If ratings are selected, submit them
+    if st.session_state.get('difficulty_rating') or st.session_state.get('issue_rating'):
+        # Update game state with ratings
+        st.session_state.game_state = game_logic.submit_rating(
+            st.session_state.game_state,
+            st.session_state.get('difficulty_rating'),
+            st.session_state.get('issue_rating')
+        )
+        
+        # Set a thank you message if ratings were provided
+        st.session_state.game_state['feedback_message'] = "Thank you for your feedback!"
+        st.session_state.game_state['feedback_type'] = "success"
+    
+    # Clear the ratings
+    if 'difficulty_rating' in st.session_state:
+        del st.session_state.difficulty_rating
+    if 'issue_rating' in st.session_state:
+        del st.session_state.issue_rating
+    
+    # Reset rating UI and load new puzzle immediately
+    st.session_state.game_state['show_rating_ui'] = False
+    st.session_state.game_state['current_puzzle'] = game_logic.load_new_puzzle()
 
 # Handle text input when Enter is pressed
 def handle_text_input():
@@ -453,23 +471,25 @@ def display_current_ratings():
     if not ratings:
         return
     
-    difficulty_avg = ratings['difficulty']['average']
-    difficulty_count = ratings['difficulty']['count']
-    fun_avg = ratings['fun']['average']
-    fun_count = ratings['fun']['count']
+    difficulty_stats = ratings['difficulty']
+    issue_stats = ratings['fun']  # We'll use the 'fun' field for issue tracking
     total_ratings = ratings['total_ratings']
     
     st.markdown(f"""
     <div class="current-ratings">
-        <span>Difficulty: {difficulty_avg}/5 </span>
-        <span class="rating-stars">{'★' * int(round(difficulty_avg))}</span>
-        <span>({difficulty_count} ratings)</span>
+        <span>Difficulty Distribution:</span>
         <br>
-        <span>Fun: {fun_avg}/5 </span>
-        <span class="rating-stars">{'★' * int(round(fun_avg))}</span>
-        <span>({fun_count} ratings)</span>
+        <span>Easy: {difficulty_stats.get('easy', 0)}</span>
+        <span>Medium: {difficulty_stats.get('medium', 0)}</span>
+        <span>Hard: {difficulty_stats.get('hard', 0)}</span>
         <br>
-        <span>Total user ratings: {total_ratings}</span>
+        <span>Issues Reported:</span>
+        <br>
+        <span>Bad Images: {issue_stats.get('bad_images', 0)}</span>
+        <span>Bad Puzzle: {issue_stats.get('bad_puzzle', 0)}</span>
+        <span>No Issues: {issue_stats.get('no_issues', 0)}</span>
+        <br>
+        <span>Total ratings: {total_ratings}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -515,43 +535,32 @@ def main():
             with st.container():
                 st.markdown('<div class="input-area">', unsafe_allow_html=True)
                 
-                # Show name input for first puzzle
-                if st.session_state.game_state['is_first_puzzle']:
-                    st.markdown('<p>Welcome! Please enter your name to begin:</p>', unsafe_allow_html=True)
-                    with st.form("name_form"):
-                        name_input = st.text_input("Your Name", key="name_input", label_visibility="collapsed")
-                        if st.form_submit_button("Start Playing", type="primary", on_click=submit_name):
-                            if not name_input.strip():
-                                st.error("Please enter your name to continue!")
+                # Label for the input
+                st.markdown('<p>What\'s the word that connects all these images?</p>', unsafe_allow_html=True)
                 
-                # Show puzzle input if not first puzzle or name is set
-                if not st.session_state.game_state['is_first_puzzle']:
-                    # Label for the input
-                    st.markdown(f'<p>Welcome back, {st.session_state.game_state["player_name"]}! What\'s the word that connects all these images?</p>', unsafe_allow_html=True)
-                    
-                    # Create a row with input field and button
-                    input_col, button_col = st.columns([4, 1])
-                    
-                    # User input in first column
-                    with input_col:
-                        user_input = st.text_input("", key="user_guess_input", label_visibility="collapsed", on_change=handle_text_input)
-                    
-                    # Submit button in second column
-                    with button_col:
-                        if st.button("Submit Guess", type="primary", on_click=submit_guess):
-                            if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
-                                st.session_state.user_guess = st.session_state.user_guess_input
-                    
-                    # Action buttons
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        if st.button("Show Hints", on_click=show_hints):
-                            pass
-                    
-                    with col2:
-                        if st.button("Skip Puzzle", on_click=skip_puzzle):
-                            pass
+                # Create a row with input field and button
+                input_col, button_col = st.columns([4, 1])
+                
+                # User input in first column
+                with input_col:
+                    user_input = st.text_input("", key="user_guess_input", label_visibility="collapsed", on_change=handle_text_input)
+                
+                # Submit button in second column
+                with button_col:
+                    if st.button("Submit Guess", type="primary", on_click=submit_guess):
+                        if 'user_guess_input' in st.session_state and st.session_state.user_guess_input:
+                            st.session_state.user_guess = st.session_state.user_guess_input
+                
+                # Action buttons
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if st.button("Show Hints", on_click=show_hints):
+                        pass
+                
+                with col2:
+                    if st.button("Skip Puzzle", on_click=skip_puzzle):
+                        pass
                 
                 st.markdown('</div>', unsafe_allow_html=True)
     except Exception as e:
@@ -563,17 +572,21 @@ def main():
         st.markdown("""
         ## How to Play
         
-        1. Look at the four images.
+        1. Look at the four images displayed in the grid.
         2. Think of a single word that connects all four images.
-        3. Type your guess in the input field and press Enter.
-        4. If you're stuck, use the "Show Hints" button to see image descriptions.
-        5. Use the "Skip Puzzle" button to move to a new puzzle.
-        6. After solving a puzzle, you can rate its difficulty and fun factor.
+        3. Type your guess and press Enter or click Submit.
+        4. Use "Show Hints" for image descriptions or "Skip Puzzle" to move on.
+        5. After solving, rate the difficulty and report any issues.
         
-        ## Scoring
-        - Base score: 100 points per puzzle
-        - Time bonus: Up to 50 extra points for solving quickly
-        - Hint penalty: -30 points if hints are used
+        ## Tips
+        - The connecting word can be a noun, verb, or adjective.
+        - Sometimes the connection is abstract or based on wordplay.
+        - Take your time - there's no rush to solve.
+        
+        ## About Quadrality
+        Quadrality is a word puzzle game that challenges you to find connections between seemingly unrelated images. Each puzzle presents four images that share a common word or concept.
+        
+        Enjoy the challenge!
         """)
 
 # Run the app

@@ -6,15 +6,22 @@ import uuid
 import datetime
 from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
+from botocore.exceptions import ClientError
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # AWS S3 configuration
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_DEFAULT_REGION = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'word-puzzle-421')
+PUZZLE_BUCKET = os.getenv('PUZZLE_S3_BUCKET_NAME', 'word-puzzle-421')
+WEBAPP_BUCKET = os.getenv('WEBAPP_S3_BUCKET_NAME', 'word-puzzle-421-webapp')
 
 # Initialize S3 client
 s3_client = boto3.client(
@@ -37,19 +44,22 @@ def check_aws_configuration():
             print("ERROR: AWS credentials not set. Please check your .env file.")
             return False
         
-        # Check if bucket exists and is accessible
-        response = s3_client.head_bucket(Bucket=S3_BUCKET_NAME)
-        print(f"Successfully connected to S3 bucket: {S3_BUCKET_NAME}")
+        # Check if both buckets exist and are accessible
+        response = s3_client.head_bucket(Bucket=PUZZLE_BUCKET)
+        print(f"Successfully connected to puzzle bucket: {PUZZLE_BUCKET}")
         
-        # Check if puzzle directory exists
+        response = s3_client.head_bucket(Bucket=WEBAPP_BUCKET)
+        print(f"Successfully connected to webapp bucket: {WEBAPP_BUCKET}")
+        
+        # Check if puzzle directory exists in puzzle bucket
         response = s3_client.list_objects_v2(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=PUZZLE_BUCKET,
             Prefix='puzzles/',
             MaxKeys=1
         )
         
         if 'Contents' not in response or len(response['Contents']) == 0:
-            print(f"ERROR: No puzzles found in the S3 bucket: {S3_BUCKET_NAME}")
+            print(f"ERROR: No puzzles found in the puzzle bucket: {PUZZLE_BUCKET}")
             return False
             
         return True
@@ -64,15 +74,15 @@ if not aws_config_valid:
 
 def get_puzzle_ids() -> List[str]:
     """
-    Get all puzzle IDs from the S3 bucket.
+    Get all puzzle IDs from the puzzle bucket.
     
     Returns:
         List[str]: A list of puzzle IDs
     """
     try:
-        # List all objects in the puzzles/ directory
+        # List all objects in the puzzles/ directory of the puzzle bucket
         response = s3_client.list_objects_v2(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=PUZZLE_BUCKET,
             Prefix='puzzles/'
         )
         
@@ -85,7 +95,7 @@ def get_puzzle_ids() -> List[str]:
                 puzzle_ids.append(puzzle_id)
         
         if not puzzle_ids:
-            print(f"Warning: No puzzle files found in S3 bucket '{S3_BUCKET_NAME}' under 'puzzles/' prefix")
+            print(f"Warning: No puzzle files found in puzzle bucket '{PUZZLE_BUCKET}' under 'puzzles/' prefix")
         
         return puzzle_ids
     except Exception as e:
@@ -98,13 +108,13 @@ def get_puzzle_ids() -> List[str]:
             print("Missing AWS credentials. Please check your .env file.")
         
         # Check if bucket name is valid
-        print(f"Using S3 bucket name: {S3_BUCKET_NAME}")
+        print(f"Using puzzle bucket name: {PUZZLE_BUCKET}")
         
         return []
 
 def get_random_puzzle() -> Optional[Dict[str, Any]]:
     """
-    Get a random puzzle from the S3 bucket.
+    Get a random puzzle from the puzzle bucket.
     
     Returns:
         Dict[str, Any]: A puzzle dictionary with images and descriptions
@@ -128,7 +138,7 @@ def get_random_puzzle() -> Optional[Dict[str, Any]]:
 
 def get_puzzle_by_id(puzzle_id: str) -> Optional[Dict[str, Any]]:
     """
-    Get a puzzle by its ID.
+    Get a puzzle by its ID from the puzzle bucket.
     
     Args:
         puzzle_id (str): The puzzle ID
@@ -137,9 +147,9 @@ def get_puzzle_by_id(puzzle_id: str) -> Optional[Dict[str, Any]]:
         Dict[str, Any]: The puzzle data
     """
     try:
-        # Get the puzzle JSON file
+        # Get the puzzle JSON file from the puzzle bucket
         response = s3_client.get_object(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=PUZZLE_BUCKET,
             Key=f'puzzles/{puzzle_id}.json'
         )
         
@@ -160,7 +170,7 @@ def get_puzzle_by_id(puzzle_id: str) -> Optional[Dict[str, Any]]:
 
 def validate_answer(puzzle_id: str, guess: str) -> bool:
     """
-    Validate the user's guess against the correct answer.
+    Validate the user's guess against the correct answer from the puzzle bucket.
     
     Args:
         puzzle_id (str): The puzzle ID
@@ -184,10 +194,10 @@ def validate_answer(puzzle_id: str, guess: str) -> bool:
                 # Hardcoded fallback for the example puzzle
                 return guess.lower() == "base"
         
-        # Normal S3 solution path
+        # Normal S3 solution path - check in solutions_by_id folder in puzzle bucket
         # Get the solution JSON file
         response = s3_client.get_object(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=PUZZLE_BUCKET,
             Key=f'solutions_by_id/{puzzle_id}.json'
         )
         
@@ -203,7 +213,7 @@ def validate_answer(puzzle_id: str, guess: str) -> bool:
 
 def get_solution(puzzle_id: str) -> Optional[str]:
     """
-    Get the solution for a puzzle.
+    Get the solution for a puzzle from the puzzle bucket.
     
     Args:
         puzzle_id (str): The puzzle ID
@@ -226,10 +236,10 @@ def get_solution(puzzle_id: str) -> Optional[str]:
                 # Hardcoded fallback for the example puzzle
                 return "base"
         
-        # Normal S3 path
+        # Normal S3 path - check in solutions_by_id folder in puzzle bucket
         # Get the solution JSON file
         response = s3_client.get_object(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=PUZZLE_BUCKET,
             Key=f'solutions_by_id/{puzzle_id}.json'
         )
         
@@ -243,7 +253,7 @@ def get_solution(puzzle_id: str) -> Optional[str]:
 
 def generate_image_url(image_name: str) -> str:
     """
-    Generate a pre-signed URL for an image.
+    Generate a pre-signed URL for an image from the puzzle bucket.
     
     Args:
         image_name (str): The image filename
@@ -252,11 +262,11 @@ def generate_image_url(image_name: str) -> str:
         str: The pre-signed URL
     """
     try:
-        # Generate a pre-signed URL for the image
+        # Generate a pre-signed URL for the image from the puzzle bucket
         url = s3_client.generate_presigned_url(
             'get_object',
             Params={
-                'Bucket': S3_BUCKET_NAME,
+                'Bucket': PUZZLE_BUCKET,
                 'Key': f'images/{image_name}'
             },
             ExpiresIn=3600  # URL expires in 1 hour
@@ -325,7 +335,7 @@ def create_dummy_puzzle() -> Dict[str, Any]:
 
 def get_puzzle_ratings(puzzle_id: str) -> Optional[Dict[str, Any]]:
     """
-    Get ratings for a puzzle.
+    Get ratings for a puzzle from the webapp bucket.
     
     Args:
         puzzle_id (str): The puzzle ID
@@ -334,9 +344,9 @@ def get_puzzle_ratings(puzzle_id: str) -> Optional[Dict[str, Any]]:
         Dict[str, Any]: The ratings data, or None if no ratings exist
     """
     try:
-        # Get the ratings JSON file
+        # Get the ratings JSON file from the webapp bucket
         response = s3_client.get_object(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=WEBAPP_BUCKET,
             Key=f'ratings/{puzzle_id}.json'
         )
         
@@ -347,17 +357,17 @@ def get_puzzle_ratings(puzzle_id: str) -> Optional[Dict[str, Any]]:
         print(f"Info: No ratings found for puzzle {puzzle_id}: {type(e).__name__}: {str(e)}")
         return None
 
-def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: int, fun_rating: int, 
+def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: str, issue_rating: str, 
                         time_to_solve: float, hints_used: bool, session_id: str, was_skipped: bool = False,
                         player_name: str = None) -> bool:
     """
-    Submit a rating for a puzzle and update aggregate ratings.
+    Submit a rating for a puzzle and update aggregate ratings in the webapp bucket.
     
     Args:
         puzzle_id (str): The puzzle ID
         target_word (str): The solution word
-        difficulty_rating (int): Rating from 1-5 for difficulty
-        fun_rating (int): Rating from 1-5 for fun
+        difficulty_rating (str): One of "easy", "medium", "hard"
+        issue_rating (str): One of "bad_images", "bad_puzzle", "no_issues"
         time_to_solve (float): Time taken to solve in seconds
         hints_used (bool): Whether hints were used
         session_id (str): Anonymous session identifier
@@ -373,7 +383,7 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
             puzzle_id=puzzle_id,
             target_word=target_word,
             difficulty_rating=difficulty_rating,
-            fun_rating=fun_rating,
+            issue_rating=issue_rating,
             time_to_solve=time_to_solve,
             hints_used=hints_used,
             session_id=session_id,
@@ -387,28 +397,22 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
         
         if current_ratings:
             # Update existing ratings
-            difficulty_count = current_ratings['difficulty']['count']
-            difficulty_avg = current_ratings['difficulty']['average']
-            fun_count = current_ratings['fun']['count']
-            fun_avg = current_ratings['fun']['average']
+            difficulty_stats = current_ratings['difficulty']
+            issue_stats = current_ratings['fun']  # We'll use the 'fun' field for issue tracking
             total = current_ratings['total_ratings']
             
-            # Calculate new averages
-            new_difficulty_avg = ((difficulty_avg * difficulty_count) + difficulty_rating) / (difficulty_count + 1)
-            new_fun_avg = ((fun_avg * fun_count) + fun_rating) / (fun_count + 1)
+            # Update difficulty stats
+            difficulty_stats[difficulty_rating] = difficulty_stats.get(difficulty_rating, 0) + 1
+            
+            # Update issue stats
+            issue_stats[issue_rating] = issue_stats.get(issue_rating, 0) + 1
             
             # Create updated ratings object
             updated_ratings = {
                 "puzzle_id": puzzle_id,
                 "target_word": target_word,
-                "difficulty": {
-                    "average": round(new_difficulty_avg, 2),
-                    "count": difficulty_count + 1
-                },
-                "fun": {
-                    "average": round(new_fun_avg, 2),
-                    "count": fun_count + 1
-                },
+                "difficulty": difficulty_stats,
+                "fun": issue_stats,  # Using 'fun' field for issue tracking
                 "total_ratings": total + 1,
                 "last_updated": datetime.datetime.utcnow().isoformat()
             }
@@ -418,20 +422,24 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
                 "puzzle_id": puzzle_id,
                 "target_word": target_word,
                 "difficulty": {
-                    "average": difficulty_rating,
-                    "count": 1
+                    difficulty_rating: 1,
+                    "easy": 0,
+                    "medium": 0,
+                    "hard": 0
                 },
-                "fun": {
-                    "average": fun_rating,
-                    "count": 1
+                "fun": {  # Using 'fun' field for issue tracking
+                    issue_rating: 1,
+                    "bad_images": 0,
+                    "bad_puzzle": 0,
+                    "no_issues": 0
                 },
                 "total_ratings": 1,
                 "last_updated": datetime.datetime.utcnow().isoformat()
             }
         
-        # Save the updated ratings
+        # Save the updated ratings to the webapp bucket
         s3_client.put_object(
-            Bucket=S3_BUCKET_NAME,
+            Bucket=WEBAPP_BUCKET,
             Key=f'ratings/{puzzle_id}.json',
             Body=json.dumps(updated_ratings, indent=2),
             ContentType='application/json'
@@ -450,28 +458,22 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
             with open(f"{ratings_dir}/{puzzle_id}.json", 'w') as f:
                 if current_ratings:
                     # Update existing ratings
-                    difficulty_count = current_ratings['difficulty']['count']
-                    difficulty_avg = current_ratings['difficulty']['average']
-                    fun_count = current_ratings['fun']['count']
-                    fun_avg = current_ratings['fun']['average']
+                    difficulty_stats = current_ratings['difficulty']
+                    issue_stats = current_ratings['fun']  # We'll use the 'fun' field for issue tracking
                     total = current_ratings['total_ratings']
                     
-                    # Calculate new averages
-                    new_difficulty_avg = ((difficulty_avg * difficulty_count) + difficulty_rating) / (difficulty_count + 1)
-                    new_fun_avg = ((fun_avg * fun_count) + fun_rating) / (fun_count + 1)
+                    # Update difficulty stats
+                    difficulty_stats[difficulty_rating] = difficulty_stats.get(difficulty_rating, 0) + 1
+                    
+                    # Update issue stats
+                    issue_stats[issue_rating] = issue_stats.get(issue_rating, 0) + 1
                     
                     # Create updated ratings object
                     updated_ratings = {
                         "puzzle_id": puzzle_id,
                         "target_word": target_word,
-                        "difficulty": {
-                            "average": round(new_difficulty_avg, 2),
-                            "count": difficulty_count + 1
-                        },
-                        "fun": {
-                            "average": round(new_fun_avg, 2),
-                            "count": fun_count + 1
-                        },
+                        "difficulty": difficulty_stats,
+                        "fun": issue_stats,  # Using 'fun' field for issue tracking
                         "total_ratings": total + 1,
                         "last_updated": datetime.datetime.utcnow().isoformat()
                     }
@@ -481,12 +483,16 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
                         "puzzle_id": puzzle_id,
                         "target_word": target_word,
                         "difficulty": {
-                            "average": difficulty_rating,
-                            "count": 1
+                            difficulty_rating: 1,
+                            "easy": 0,
+                            "medium": 0,
+                            "hard": 0
                         },
-                        "fun": {
-                            "average": fun_rating,
-                            "count": 1
+                        "fun": {  # Using 'fun' field for issue tracking
+                            issue_rating: 1,
+                            "bad_images": 0,
+                            "bad_puzzle": 0,
+                            "no_issues": 0
                         },
                         "total_ratings": 1,
                         "last_updated": datetime.datetime.utcnow().isoformat()
@@ -499,17 +505,17 @@ def submit_puzzle_rating(puzzle_id: str, target_word: str, difficulty_rating: in
         
         return False
 
-def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: int, fun_rating: int, 
+def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: str, issue_rating: str, 
                          time_to_solve: float, hints_used: bool, session_id: str, was_skipped: bool = False,
                          player_name: str = None) -> bool:
     """
-    Log an individual rating to the ratings log.
+    Log an individual rating to the ratings log in the webapp bucket.
     
     Args:
         puzzle_id (str): The puzzle ID
         target_word (str): The solution word
-        difficulty_rating (int): Rating from 1-5 for difficulty
-        fun_rating (int): Rating from 1-5 for fun
+        difficulty_rating (str): One of "easy", "medium", "hard"
+        issue_rating (str): One of "bad_images", "bad_puzzle", "no_issues"
         time_to_solve (float): Time taken to solve in seconds
         hints_used (bool): Whether hints were used
         session_id (str): Anonymous session identifier
@@ -536,7 +542,7 @@ def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: i
             "session_id": session_id,
             "ratings": {
                 "difficulty": difficulty_rating,
-                "fun": fun_rating
+                "issue": issue_rating
             },
             "metadata": {
                 "time_to_solve": time_to_solve,
@@ -548,10 +554,10 @@ def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: i
             }
         }
         
-        # Try to get existing log file
+        # Try to get existing log file from the webapp bucket
         try:
             response = s3_client.get_object(
-                Bucket=S3_BUCKET_NAME,
+                Bucket=WEBAPP_BUCKET,
                 Key=log_key
             )
             
@@ -561,17 +567,17 @@ def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: i
             # Append new log
             existing_logs.append(log_entry)
             
-            # Save updated logs
+            # Save updated logs to the webapp bucket
             s3_client.put_object(
-                Bucket=S3_BUCKET_NAME,
+                Bucket=WEBAPP_BUCKET,
                 Key=log_key,
                 Body=json.dumps(existing_logs, indent=2),
                 ContentType='application/json'
             )
         except:
-            # File doesn't exist, create new log file with single entry
+            # File doesn't exist, create new log file with single entry in the webapp bucket
             s3_client.put_object(
-                Bucket=S3_BUCKET_NAME,
+                Bucket=WEBAPP_BUCKET,
                 Key=log_key,
                 Body=json.dumps([log_entry], indent=2),
                 ContentType='application/json'
@@ -599,7 +605,7 @@ def log_individual_rating(puzzle_id: str, target_word: str, difficulty_rating: i
                 "session_id": session_id,
                 "ratings": {
                     "difficulty": difficulty_rating,
-                    "fun": fun_rating
+                    "issue": issue_rating
                 },
                 "metadata": {
                     "time_to_solve": time_to_solve,
